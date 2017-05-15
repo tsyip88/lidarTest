@@ -45,6 +45,11 @@ Please write good code - follow a decent coding standard and add any parameter c
 
 using namespace std;
 
+
+void get_user_input_data(int& N, char& c);
+bool create_fizz_rnd_list(
+    QScopedPointer<fizz_rnd_float_list>& list, float& lower_range, float& upper_range, int N, char c, i_random_number_generator& rng);
+bool output_data(fizz_rnd_float_list& fizz_list, float& lower_range, float& upper_range, int N, i_random_number_generator& rng);
 void print_array_data(const vector<float>& data);
 void print_stats(float f, const stats& s);
 void write_labels(QIODevice* device);
@@ -54,17 +59,36 @@ int main(int argc, char *argv[])
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
-    random_number_generator rng;
     int N = 0;
-    char c;
+    char c = ' ';
+    get_user_input_data(N, c);
+    random_number_generator rng;
+    QScopedPointer<fizz_rnd_float_list> fizz_list;
+    float lower_range = 0.0;
+    float upper_range = 0.0;
+    if(!create_fizz_rnd_list(fizz_list, lower_range, upper_range, N, c, rng))
+    {
+        return -1;
+    }
+    if(!output_data(*fizz_list, lower_range, upper_range, N, rng))
+    {
+        return -2;
+    }
+
+    return 0;
+}
+
+void get_user_input_data(int& N, char& c)
+{
     printf("Enter a value for N:\n");
     cin >> N;
     printf("Enter 'i' to create an integer list or 'f' to create a float list:\n");
     cin >> c;
+}
 
-    QScopedPointer<fizz_rnd_float_list> fizz_list;
-    float lower_range = 0.0;
-    float upper_range = 0.0;
+bool create_fizz_rnd_list(
+    QScopedPointer<fizz_rnd_float_list>& fizz_list, float& lower_range, float& upper_range, int N, char c, i_random_number_generator& rng)
+{
     switch(c)
     {
         case 'f':
@@ -84,30 +108,33 @@ int main(int argc, char *argv[])
         default:
         {
             printf("Unrecognized input arg: %c. Failed to run program\n", c);
-            return -1;
+            return false;
         }
     }
+    return true;
+}
 
-    print_array_data(fizz_list->rand_array);
+bool output_data(fizz_rnd_float_list& fizz_list, float& lower_range, float& upper_range, int N, i_random_number_generator& rng)
+{
+    print_array_data(fizz_list.rand_array);
     QFile output_file(QDir::currentPath() + "/output.csv");
     bool successfully_opened = output_file.open(QIODevice::WriteOnly);
     if(!successfully_opened)
     {
         printf("Failed to open file: %s\n", qPrintable(output_file.fileName()));
-        return -2;
+        return false;
     }
     write_labels(&output_file);
     for(int i = 0; i < N+1; i++)
     {
         float X = rng.generate_float(lower_range, upper_range);
-        stats s = fizz_list->get_stats(X);
+        stats s = fizz_list.get_stats(X);
         print_stats(X, s);
         write_to_file(&output_file, X, s);
     }
     output_file.close();
     printf("Successfully wrote to: %s\n", qPrintable(output_file.fileName()));
-
-    return 0;
+    return true;
 }
 
 void print_array_data(const vector<float>& data)
